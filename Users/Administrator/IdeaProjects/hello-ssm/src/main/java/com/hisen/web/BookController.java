@@ -10,11 +10,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.annotation.PostConstruct;
+import javax.servlet.http.HttpServletRequest;
+import java.io.File;
+import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 
@@ -36,7 +38,7 @@ public class BookController {
         return "list";// WEB-INF/jsp/"list".jsp
     }
 
-    @RequestMapping(value = "/allbook", method = RequestMethod.GET , produces = "text/plain;charset=UTF-8")
+    @RequestMapping(value = "/allbook", method = RequestMethod.GET, produces = "text/plain;charset=UTF-8")
     @ResponseBody
     public String allBook() {
         List<Book> list = bookService.getList(0, 1000);
@@ -145,19 +147,68 @@ public class BookController {
         Gson gson = new Gson();
         ApiResult apiResult = new ApiResult<>();
         int i = bookService.deleteBookById(id);
-        if ( i > 0){
+        if (i > 0) {
             apiResult.setCode("1");
             apiResult.setMsg("删除成功");
-        }else{
+        } else {
             apiResult.setCode("0");
             apiResult.setMsg("删除失败");
         }
         String result = gson.toJson(apiResult);
-        return result ;
+        return result;
     }
 
 
+    @PostConstruct
+    public void init() {
+        logger.debug("-----------------upload controller init()------------------------");
+    }
 
+
+    @RequestMapping(value = "/image")
+    @ResponseBody
+    public String fileUpload(
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest request   ) {
+
+        Gson gson = new Gson();
+        ApiResult apiResult = new ApiResult<>();
+
+
+        if (file != null && !file.isEmpty()) {
+            String originalFilename = file.getOriginalFilename();
+            logger.debug(originalFilename);
+
+            // 文件保存路劲
+            File outPath = new File(request.getServletContext().getRealPath("/"), "upload");
+            if (!outPath.exists() || !outPath.isDirectory()) {
+                outPath.mkdirs();
+            }
+
+            //保存的文件 dest file
+            File outFile = new File(outPath, file.getOriginalFilename());
+
+            logger.debug(outFile.getAbsolutePath());
+
+            try {
+                file.transferTo(outFile);
+                apiResult.setCode("1");
+                apiResult.setMsg("上传成功" + request.getServletContext().getRealPath("/") + file.getOriginalFilename());
+            } catch (IOException e) {
+                apiResult.setCode("0");
+                apiResult.setMsg("上传失败");
+
+                e.printStackTrace();
+                logger.debug(e.getMessage());
+            }
+        }
+
+        logger.debug("" + gson.toJson(apiResult));
+
+        return "" + gson.toJson(apiResult);
+
+
+    }
 
 
 }
